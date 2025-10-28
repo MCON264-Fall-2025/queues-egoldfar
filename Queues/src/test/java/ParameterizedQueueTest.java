@@ -37,7 +37,8 @@ public class ParameterizedQueueTest {
         void test_enqueue(String name, Supplier<QueueInterface<Integer>> factory) {
             QueueInterface<Integer> queue = factory.get();
             queue.enqueue(42);
-            // TODO: Add assertions to verify enqueue
+            assertFalse(queue.isEmpty());
+            assertEquals(1, queue.size());
         }
 
         @ParameterizedTest(name = "{0} — dequeue")
@@ -46,21 +47,39 @@ public class ParameterizedQueueTest {
             QueueInterface<Integer> queue = factory.get();
             queue.enqueue(99);
             Integer val = queue.dequeue();
-            // TODO: Add assertions to verify dequeue
+            assertEquals(99, val);
+            assertTrue(queue.isEmpty());
         }
 
         @ParameterizedTest(name = "{0} — isFull")
         @MethodSource("ParameterizedQueueTest#queueProviders")
         void test_isFull(String name, Supplier<QueueInterface<Integer>> factory) {
             QueueInterface<Integer> queue = factory.get();
-            // TODO: Fill queue if possible and assert isFull
+            queue.enqueue(1);
+            queue.enqueue(2);
+            assertFalse(queue.isFull());
+            queue.enqueue(3);
+            queue.enqueue(4);
+            queue.enqueue(4);
+            queue.enqueue(4);
+            queue.enqueue(4);
+            queue.enqueue(4);
+            queue.enqueue(4);
+            queue.enqueue(4);
+            if (queue instanceof ArrayBoundedQueue) {
+                assertTrue(queue.isFull());
+            }
         }
 
         @ParameterizedTest(name = "{0} — isEmpty")
         @MethodSource("ParameterizedQueueTest#queueProviders")
         void test_isEmpty(String name, Supplier<QueueInterface<Integer>> factory) {
             QueueInterface<Integer> queue = factory.get();
-            // TODO: verify isEmpty before and after enqueue
+            assertTrue(queue.isEmpty());
+            queue.enqueue(1);
+            assertFalse(queue.isEmpty());
+            queue.dequeue();
+            assertTrue(queue.isEmpty());
         }
 
         @ParameterizedTest(name = "{0} — size")
@@ -81,8 +100,11 @@ public class ParameterizedQueueTest {
         @MethodSource("ParameterizedQueueTest#queueProviders")
         void test_enqueue_dequeue(String name, Supplier<QueueInterface<Integer>> factory) {
             QueueInterface<Integer> queue = factory.get();
-            // TODO: Verify that enqueue(1) makes the queue non-empty,
-            //  dequeue() returns 1, and the queue becomes empty again
+            queue.enqueue(1);
+            assertFalse(queue.isEmpty());
+            Integer val = queue.dequeue();
+            assertEquals(1, val);
+            assertTrue(queue.isEmpty());
         }
 
         @ParameterizedTest(name = "{0} — underflow on empty dequeue")
@@ -100,7 +122,9 @@ public class ParameterizedQueueTest {
         @DisplayName("ArrayBoundedQueue — overflow exception")
         void test_overflow() {
             ArrayBoundedQueue<Integer> queue = new ArrayBoundedQueue<>(2);
-            // TODO: enqueue elements and assert overflow behavior
+            queue.enqueue(1);
+            queue.enqueue(2);
+            assertThrows(QueueOverflowException.class, () -> queue.enqueue(3));
         }
     }
 
@@ -108,11 +132,49 @@ public class ParameterizedQueueTest {
     @DisplayName("LinkedQueue-specific behavior")
     class LinkedQueueSpecific {
         @Test
-        @DisplayName("LinkedQueue — test specific feature")
-        void test_linkedQueueSpecific() {
+        @DisplayName("LinkedQueue — never full (unbounded)")
+        void test_neverFull() {
             LinkedQueue<Integer> queue = new LinkedQueue<>();
-            // TODO: Add LinkedQueue-specific assertions
+            assertFalse(queue.isFull());
+            // Add many elements - LinkedQueue should never be full
+            for (int i = 0; i < 1000; i++) {
+                queue.enqueue(i);
+                assertFalse(queue.isFull());
+            }
+            assertEquals(1000, queue.size());
         }
-        // Add more LinkedQueue-specific tests here
+        
+        @Test
+        @DisplayName("LinkedQueue — large queue operations")
+        void test_largeQueue() {
+            LinkedQueue<Integer> queue = new LinkedQueue<>();
+            // Test that LinkedQueue can handle large number of elements
+            int largeSize = 10000;
+            for (int i = 0; i < largeSize; i++) {
+                queue.enqueue(i);
+            }
+            assertEquals(largeSize, queue.size());
+            
+            // Verify FIFO order
+            for (int i = 0; i < largeSize; i++) {
+                assertEquals(i, queue.dequeue());
+            }
+            assertTrue(queue.isEmpty());
+        }
+        
+        @Test
+        @DisplayName("LinkedQueue — alternating enqueue/dequeue")
+        void test_alternatingOperations() {
+            LinkedQueue<Integer> queue = new LinkedQueue<>();
+            // Test alternating operations maintain correct state
+            for (int i = 0; i < 100; i++) {
+                queue.enqueue(i);
+                Integer val = queue.dequeue();
+                assertEquals(i, val);
+                assertTrue(queue.isEmpty());
+            }
+            // Queue should be empty after all operations
+            assertTrue(queue.isEmpty());
+        }
     }
 }
